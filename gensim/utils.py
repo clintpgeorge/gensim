@@ -38,7 +38,28 @@ except ImportError:
 PAT_ALPHABETIC = re.compile('(((?![\d])\w)+)', re.UNICODE)
 RE_HTML_ENTITY = re.compile(r'&(#?)(x?)(\w+);', re.UNICODE)
 
-
+class SimilariyType:
+    '''
+    The similarity type (enumerator) class  
+    '''
+    # The cosine similarity in the range of [0, 1]. 
+    # We assume that the input vectors are normalized. 
+    COSINE = 1
+    
+    # It's actually an approximation 
+    # to the negative KL-divergence formula, 
+    # which is good for relevance ranking. 
+    # It's a divergence score, so the document 
+    # with smallest score is best document for ranking    
+    # Reference: 
+    #     "Notes on the KL-divergence retrieval 
+    #     formula and Dirichlet prior smoothing" by ChengXiang Zhai
+    Negative_KL = 2 
+    
+    # KL-divergence (asymmetric) score 
+    # It's a divergence score, so the document 
+    # with smallest score is best document for ranking    
+    KL = 3  
 
 def synchronous(tlockname):
     """

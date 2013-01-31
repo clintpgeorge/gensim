@@ -1,5 +1,5 @@
 import logging
-from gensim import corpora, models, similarities
+from gensim import corpora, models, similarities, utils 
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
@@ -33,13 +33,28 @@ corpora.MmCorpus.serialize('/tmp/deerwester.mm', corpus) # store to disk, for la
 print corpus
 
 lda = models.ldamodel.LdaModel(corpus=corpus, id2word=dictionary, num_topics=2)
-index = similarities.MatrixSimilarity(lda[corpus])
+doc1 = "Human computer interaction"
+doc2 = "Relation of user perceived response time"
+vec_bow1 = dictionary.doc2bow(doc1.lower().split())
+vec_bow2 = dictionary.doc2bow(doc2.lower().split())
+vec_lda = lda[[vec_bow1, vec_bow2]]
 
-doc = "Human computer interaction"
-vec_bow = dictionary.doc2bow(doc.lower().split())
-vec_lda = lda[vec_bow]
-
+index = similarities.MatrixSimilarity(lda[corpus], similarity_type=utils.SimilariyType.COSINE)
 sims = index[vec_lda] # perform a similarity query against the corpus
-print sorted(enumerate(sims), key=lambda item: -item[1])
+#print sorted(enumerate(sims), key=lambda item: -item[1])
+for es in sims: 
+    print sorted(enumerate(es), key=lambda item: -item[1])
+
+index = similarities.MatrixSimilarity(lda[corpus], similarity_type=utils.SimilariyType.Negative_KL)
+sims = index[vec_lda] # perform a similarity query against the corpus
+#print sorted(enumerate(sims), key=lambda item: item[1])
+for es in sims: 
+    print sorted(enumerate(es), key=lambda item: item[1])
+
+index = similarities.MatrixSimilarity(lda[corpus], similarity_type=utils.SimilariyType.KL)
+sims = index[vec_lda] # perform a similarity query against the corpus
+#print sorted(enumerate(sims), key=lambda item: item[1])
+for es in sims: 
+    print sorted(enumerate(es), key=lambda item: item[1])
 
 

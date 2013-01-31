@@ -16,8 +16,8 @@ import tempfile
 
 import numpy
 
-from gensim.corpora import mmcorpus, Dictionary
-from gensim import matutils, utils, similarities
+from gensim.corpora import Dictionary
+from gensim import matutils, similarities
 
 
 module_path = os.path.dirname(__file__) # needed because sample data files are located in the same folder

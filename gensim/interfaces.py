@@ -4,6 +4,7 @@
 # Copyright (C) 2010 Radim Rehurek <radimrehurek@seznam.cz>
 # Licensed under the GNU LGPL v2.1 - http://www.gnu.org/licenses/lgpl.html
 
+
 """
 This module contains basic interfaces used throughout the whole gensim package.
 
@@ -160,7 +161,8 @@ class SimilarityABC(utils.SaveLoad):
     similarities of each document in the corpus against the whole corpus (ie.,
     the query is each corpus document in turn).
     """
-    def __init__(self, corpus):
+    def __init__(self, corpus, similarity_type=utils.SimilariyType.COSINE):
+        self.sim_type = similarity_type
         raise NotImplementedError("cannot instantiate Abstract Base Class")
 
 

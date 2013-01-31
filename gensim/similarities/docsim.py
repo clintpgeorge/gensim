@@ -154,7 +154,7 @@ class Similarity(interfaces.SimilarityABC):
     The shards themselves are simply stored as files to disk and mmap'ed back as needed.
 
     """
-    def __init__(self, output_prefix, corpus, num_features, num_best=None, chunksize=1024, shardsize=32768):
+    def __init__(self, output_prefix, corpus, num_features, num_best=None, chunksize=1024, shardsize=32768, similarity_type=utils.SimilariyType.COSINE):
         """
         Construct the index from `corpus`. The index can be later extended by calling
         the `add_documents` method. **Note**: documents are split (internally, transparently)
@@ -201,6 +201,7 @@ class Similarity(interfaces.SimilarityABC):
         self.shardsize = shardsize
         self.shards = []
         self.fresh_docs, self.fresh_nnz = [], 0
+        self.sim_type = similarity_type
 
         if corpus is not None:
             self.add_documents(corpus)
@@ -479,7 +480,7 @@ class MatrixSimilarity(interfaces.SimilarityABC):
     See also `Similarity` and `SparseMatrixSimilarity` in this module.
 
     """
-    def __init__(self, corpus, num_best=None, dtype=numpy.float32, num_features=None, chunksize=256):
+    def __init__(self, corpus, num_best=None, dtype=numpy.float32, num_features=None, chunksize=256, similarity_type=utils.SimilariyType.COSINE):
         """
         `num_features` is the number of features in the corpus (will be determined
         automatically by scanning the corpus if not specified). See `Similarity`
@@ -494,6 +495,7 @@ class MatrixSimilarity(interfaces.SimilarityABC):
         self.num_best = num_best
         self.normalize = True
         self.chunksize = chunksize
+        self.sim_type = similarity_type
 
         if corpus is not None:
             if self.num_features <= 0:
@@ -549,9 +551,20 @@ class MatrixSimilarity(interfaces.SimilarityABC):
                 query = matutils.sparse2full(query, self.num_features)
             query = numpy.asarray(query, dtype=self.index.dtype)
 
-        # do a little transposition dance to stop numpy from making a copy of
-        # self.index internally in numpy.dot (very slow).
-        result = numpy.dot(self.index, query.T).T # return #queries x #index
+        if self.sim_type == utils.SimilariyType.COSINE:
+            # do a little transposition dance to stop numpy from making a copy of
+            # self.index internally in numpy.dot (very slow).
+            result = numpy.dot(self.index, query.T).T # return #queries x #index
+        
+        elif self.sim_type == utils.SimilariyType.Negative_KL:
+            result = -numpy.dot(numpy.log(self.index), query.T).T # return #queries x #index
+        
+        elif self.sim_type == utils.SimilariyType.KL:
+            if is_corpus:
+                result =  (numpy.sum(query * numpy.log(query), axis=0).T)[:,numpy.newaxis] - numpy.dot(numpy.log(self.index), query.T).T
+            else: 
+                result =  numpy.sum(query * numpy.log(query), axis=0) - numpy.dot(numpy.log(self.index), query.T).T
+                
         return result # XXX: removed casting the result from array to list; does anyone care?
 
 
@@ -600,10 +613,12 @@ class SparseMatrixSimilarity(interfaces.SimilarityABC):
     See also `Similarity` and `MatrixSimilarity` in this module.
     """
     def __init__(self, corpus, num_features=None, num_terms=None, num_docs=None, num_nnz=None,
-                 num_best=None, chunksize=500, dtype=numpy.float32):
+                 num_best=None, chunksize=500, dtype=numpy.float32, similarity_type=utils.SimilariyType.COSINE):
         self.num_best = num_best
         self.normalize = True
         self.chunksize = chunksize
+        self.sim_type = similarity_type # not yet implemented 
+
 
         if corpus is not None:
             logger.info("creating sparse index")
@@ -666,6 +681,7 @@ class SparseMatrixSimilarity(interfaces.SimilarityABC):
 
         # compute cosine similarity against every other document in the collection
         result = self.index * query.tocsc() # N x T * T x C = N x C
+
         if result.shape[1] == 1 and not is_corpus:
             # for queries of one document, return a 1d array
             result = result.toarray().flatten()
