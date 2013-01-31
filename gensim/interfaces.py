@@ -161,8 +161,7 @@ class SimilarityABC(utils.SaveLoad):
     similarities of each document in the corpus against the whole corpus (ie.,
     the query is each corpus document in turn).
     """
-    def __init__(self, corpus, similarity_type=utils.SimilariyType.COSINE):
-        self.sim_type = similarity_type
+    def __init__(self, corpus):
         raise NotImplementedError("cannot instantiate Abstract Base Class")
 
 

@@ -59,7 +59,8 @@ class SimilariyType:
     # KL-divergence (asymmetric) score 
     # It's a divergence score, so the document 
     # with smallest score is best document for ranking    
-    KL = 3  
+    # Not implemented, because it's too complicated for the case of sparse matrices 
+    # KL = 3  
 
 def synchronous(tlockname):
     """

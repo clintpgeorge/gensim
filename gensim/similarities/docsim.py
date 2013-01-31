@@ -269,9 +269,9 @@ class Similarity(interfaces.SimilarityABC):
         issparse = 0.3 > 1.0 * self.fresh_nnz / (len(self.fresh_docs) * self.num_features)
         if issparse:
             index = SparseMatrixSimilarity(self.fresh_docs, num_terms=self.num_features,
-                                           num_docs=len(self.fresh_docs), num_nnz=self.fresh_nnz)
+                                           num_docs=len(self.fresh_docs), num_nnz=self.fresh_nnz, similarity_type=self.sim_type)
         else:
-            index = MatrixSimilarity(self.fresh_docs, num_features=self.num_features)
+            index = MatrixSimilarity(self.fresh_docs, num_features=self.num_features, similarity_type=self.sim_type)
         logger.info("creating %s shard #%s" % ('sparse' if issparse else 'dense', shardid))
         shard = Shard(self.shardid2filename(shardid), index)
         shard.num_best = self.num_best
@@ -559,11 +559,14 @@ class MatrixSimilarity(interfaces.SimilarityABC):
         elif self.sim_type == utils.SimilariyType.Negative_KL:
             result = -numpy.dot(numpy.log(self.index), query.T).T # return #queries x #index
         
-        elif self.sim_type == utils.SimilariyType.KL:
-            if is_corpus:
-                result =  (numpy.sum(query * numpy.log(query), axis=0).T)[:,numpy.newaxis] - numpy.dot(numpy.log(self.index), query.T).T
-            else: 
-                result =  numpy.sum(query * numpy.log(query), axis=0) - numpy.dot(numpy.log(self.index), query.T).T
+        ## Commenting this because implementing this functionality for 
+        ## the case of sparse matrix case too complicated. It works well with 
+        ## dense matrices 
+        # elif self.sim_type == utils.SimilariyType.KL:
+        #    if is_corpus:
+        #        result =  (numpy.sum(query * numpy.log(query), axis=0).T)[:,numpy.newaxis] - numpy.dot(numpy.log(self.index), query.T).T
+        #    else: 
+        #        result =  numpy.sum(query * numpy.log(query), axis=0) - numpy.dot(numpy.log(self.index), query.T).T
                 
         return result # XXX: removed casting the result from array to list; does anyone care?
 
@@ -678,9 +681,18 @@ class SparseMatrixSimilarity(interfaces.SimilarityABC):
             else:
                 # default case: query is a single vector, in sparse gensim format
                 query = matutils.corpus2csc([query], self.index.shape[1], dtype=self.index.dtype)
-
-        # compute cosine similarity against every other document in the collection
-        result = self.index * query.tocsc() # N x T * T x C = N x C
+        
+        if self.sim_type == utils.SimilariyType.COSINE:
+            # compute cosine similarity against every other document in the collection
+            result = self.index * query.tocsc() # N x T * T x C = N x C
+            
+        elif self.sim_type == utils.SimilariyType.Negative_KL:
+            ## It's a kind of round about, because in scipy.sparse there 
+            ## is no native log fuction     
+            A = scipy.sparse.lil_matrix(self.index.shape)
+            A[:,:] = -1.0
+            result = - (A + self.index).log1p() * query.tocsc() # N x T * T x C = N x C
+            # result = -scipy.sparse.csc_matrix(numpy.log(self.index.todense())) * query.tocsc() # N x T * T x C = N x C
 
         if result.shape[1] == 1 and not is_corpus:
             # for queries of one document, return a 1d array
